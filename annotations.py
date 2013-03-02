@@ -38,6 +38,7 @@ class AnyTypeMeta(type):
     def __subclasscheck__(cls, subclass):
         return True
 
+
 class AnyType(metaclass=AnyTypeMeta):
     pass
 
@@ -51,18 +52,30 @@ class InterfaceMeta(type):
     def __new__(mcls, name, bases, namespace):
         cls = super().__new__(mcls, name, bases, namespace)
         # TODO: check base classes, prevent multiple inheritance.
-        # TODO: check signatures to prevent non type annotations.
         signatures = {}
+        attributes = {}
         for name, value in namespace.items():
+            if isinstance(value, type):
+                attributes[name] = value
+                continue
             try:
                 signatures[name] = inspect.signature(value)
             except TypeError:
                 pass
-            # TODO, check properties
         cls.__signatures__ = signatures
+        cls.__attributes__ = attributes
         return cls
 
     def __instancecheck__(cls, instance):
+        for name, type_ in cls.__attributes__.items():
+            try:
+                attribute = getattr(instance, name)
+            except AttributeError:
+                return False
+
+            if not isinstance(attribute, type_):
+                return False
+
         for name, signature in cls.__signatures__.items():
             try:
                 function = getattr(instance, name)
@@ -106,7 +119,9 @@ class InterfaceMeta(type):
             if instance_annotation is EMPTY_ANNOTATION:
                 instance_annotation = AnyType
 
-            return issubclass(instance_annotation, cls_annotation)
+            if not issubclass(instance_annotation, cls_annotation):
+                return False
+        return True
 
 
 
@@ -118,6 +133,8 @@ def _check_argument_types(signature, *args, **kwargs):
     bound_arguments = signature.bind(*args, **kwargs)
     parameters = signature.parameters
     for name, value in bound_arguments.arguments.items():
+        if value is None:
+            continue
         annotation = parameters[name].annotation
         if annotation is EMPTY_ANNOTATION:
             annotation = AnyType
@@ -126,12 +143,15 @@ def _check_argument_types(signature, *args, **kwargs):
 
 
 def _check_return_type(signature, return_value):
+    if return_value is None:
+        return
     annotation = signature.return_annotation
     if annotation is EMPTY_ANNOTATION:
         annotation = AnyType
     if not isinstance(return_value, annotation):
         raise TypeError('Incorrect return type')
     return return_value
+
 
 def typechecked(target):
     signature = inspect.signature(target)

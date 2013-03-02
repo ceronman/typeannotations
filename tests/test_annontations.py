@@ -13,7 +13,6 @@ class TypecheckedTest(unittest.TestCase):
         self.assertEqual(1, test(1))
         self.assertRaises(TypeError, test, 'string')
         self.assertRaises(TypeError, test, 1.2)
-        self.assertRaises(TypeError, test, None)
 
     def test_single_argument_with_class(self):
 
@@ -30,11 +29,8 @@ class TypecheckedTest(unittest.TestCase):
 
     def test_single_argument_with_subclass(self):
 
-        class MyClass:
-            pass
-
-        class MySubClass(MyClass):
-            pass
+        class MyClass: pass
+        class MySubClass(MyClass): pass
 
         @typechecked
         def test(a: MyClass):
@@ -56,6 +52,25 @@ class TypecheckedTest(unittest.TestCase):
         self.assertEqual(Decimal('2.5'), test(Decimal('2.5')))
         self.assertRaises(TypeError, test, 'string')
 
+    def test_single_argument_with_interface(self):
+
+        class Test(Interface):
+            def test():
+                pass
+
+        class TestImplementation:
+            def test(self):
+                return 1
+
+        class Other: pass
+
+        @typechecked
+        def test(a: Test):
+            return 1
+
+        self.assertEqual(1, test(TestImplementation()))
+        self.assertRaises(TypeError, test, Other())
+
     def test_single_argument_with_no_annotation(self):
 
         @typechecked
@@ -76,7 +91,14 @@ class TypecheckedTest(unittest.TestCase):
         self.assertRaises(TypeError, test, 1, 1)
         self.assertRaises(TypeError, test, 'string', 'string')
         self.assertRaises(TypeError, test, 'string', 1)
-        self.assertRaises(TypeError, test, None, None)
+
+    def test_single_argument_with_none_value(self):
+
+        @typechecked
+        def test(a: int):
+            return a
+
+        self.assertEqual(None, test(None))
 
     def test_multiple_arguments_some_with_annotations(self):
 
@@ -88,9 +110,8 @@ class TypecheckedTest(unittest.TestCase):
         self.assertEqual(('string', 'string'), test('string', 'string'))
         self.assertRaises(TypeError, test, 1, 1)
         self.assertRaises(TypeError, test, 'string', 1)
-        self.assertRaises(TypeError, test, None, None)
 
-    def test_single_return_annotation(self):
+    def test_return_with_builtin_type(self):
 
         @typechecked
         def test(a) -> int:
@@ -99,9 +120,40 @@ class TypecheckedTest(unittest.TestCase):
         self.assertEqual(1, test(1))
         self.assertRaises(TypeError, test, 'string')
         self.assertRaises(TypeError, test, 1.2)
-        self.assertRaises(TypeError, test, None)
 
-    def test_union_return_annotations(self):
+    def test_return_with_class(self):
+
+        class MyClass:
+            pass
+
+        @typechecked
+        def test1() -> MyClass:
+            return MyClass()
+
+        @typechecked
+        def test2() -> MyClass:
+            return 1
+
+        self.assertIsInstance(test1(), MyClass)
+        self.assertRaises(TypeError, test2)
+
+    def test_return_with_sublass(self):
+
+        class MyClass: pass
+        class MySubClass(MyClass): pass
+
+        @typechecked
+        def test1() -> MyClass:
+            return MySubClass()
+
+        @typechecked
+        def test2() -> MyClass:
+            return 1
+
+        self.assertIsInstance(test1(), MyClass)
+        self.assertRaises(TypeError, test2)
+
+    def test_return_with_union(self):
 
         @typechecked
         def test(a) -> union(int, float):
@@ -110,7 +162,37 @@ class TypecheckedTest(unittest.TestCase):
         self.assertEqual(1, test(1))
         self.assertEqual(1.1, test(1.1))
         self.assertRaises(TypeError, test, 'string')
-        self.assertRaises(TypeError, test, None)
+
+    def test_return_with_interface(self):
+
+        class Test(Interface):
+            def test():
+                pass
+
+        class TestImplementation:
+            def test(self):
+                return 1
+
+        class Other: pass
+
+        @typechecked
+        def test1() -> Test:
+            return TestImplementation()
+
+        @typechecked
+        def test2() -> Test:
+            return 1
+
+        self.assertIsInstance(test1(), TestImplementation)
+        self.assertRaises(TypeError, test2)
+
+    def test_return_with_none_value(self):
+
+        @typechecked
+        def test(a) -> int:
+            return a
+
+        self.assertEqual(None, test(None))
 
 
 class UnionTest(unittest.TestCase):
@@ -159,13 +241,13 @@ class UnionTest(unittest.TestCase):
     def test_isinstance_interfaces(self):
 
         class Test1(Interface):
-            def test1(self) -> int:
+            def test1() -> int:
                 pass
         class Test1Implementation:
             def test1(self) -> int:
                 return 1
         class Test2(Interface):
-            def test2(self) -> str:
+            def test2() -> str:
                 pass
         class Test2Implementation:
             def test2(self) -> str:
@@ -183,11 +265,11 @@ class UnionTest(unittest.TestCase):
             pass
 
         class Test2(Interface):
-            def test2(self) -> str:
+            def test2() -> str:
                 pass
 
         class Test2Implementation:
-            def test2(self) -> str:
+            def test2() -> str:
                 return 1
 
         class Other:
@@ -618,6 +700,98 @@ class InterfaceTest(unittest.TestCase):
 
         self.assertNotIsInstance(TestImplementation(), TestInterface)
 
+    def test_attribute_with_annotated_attribute(self):
+
+        class TestInterface(Interface):
+            x = int
+
+        class TestImplementation1:
+            def __init__(self):
+                self.x = 1
+
+        class TestImplementation2:
+            @property
+            def x(self):
+                return 1
+
+        class Other:
+            pass
+
+        class Another:
+            def __init__(self):
+                self.x = 'string'
+
+
+        self.assertIsInstance(TestImplementation1(), TestInterface)
+        self.assertIsInstance(TestImplementation2(), TestInterface)
+        self.assertNotIsInstance(Other(), TestInterface)
+        self.assertNotIsInstance(Another(), TestInterface)
+
+    def test_attribute_with_anytype(self):
+
+        class TestInterface(Interface):
+            x = AnyType
+
+        class TestImplementation1:
+            def __init__(self):
+                self.x = 1
+
+        class TestImplementation2:
+            def __init__(self):
+                self.x = 'string'
+
+        class Other:
+            pass
+
+        self.assertIsInstance(TestImplementation1(), TestInterface)
+        self.assertIsInstance(TestImplementation2(), TestInterface)
+        self.assertNotIsInstance(Other(), TestInterface)
+
+    def test_attribute_with_union(self):
+
+        class TestInterface(Interface):
+            x = union(int, str)
+
+        class TestImplementation1:
+            def __init__(self):
+                self.x = 1
+
+        class TestImplementation2:
+            def __init__(self):
+                self.x = 'string'
+
+        class Other:
+            x = 1.5
+
+        self.assertIsInstance(TestImplementation1(), TestInterface)
+        self.assertIsInstance(TestImplementation2(), TestInterface)
+        self.assertNotIsInstance(Other(), TestInterface)
+
+    def test_multiple_attributes(self):
+
+        class TestInterface(Interface):
+            x = AnyType
+            y = int
+
+        class TestImplementation1:
+            def __init__(self):
+                self.x = 'hello'
+                self.y = 1
+
+        class TestImplementation2:
+            x = 'string'
+
+            @property
+            def y(self):
+                return 1
+
+        class Other:
+            pass
+
+        self.assertIsInstance(TestImplementation1(), TestInterface)
+        self.assertIsInstance(TestImplementation2(), TestInterface)
+        self.assertNotIsInstance(Other(), TestInterface)
+
     def test_multiple_matching_function(self):
 
         class TestInterface(Interface):
@@ -674,14 +848,18 @@ class InterfaceTest(unittest.TestCase):
 
         self.assertIsInstance(TestImplementation(), TestInterface)
 
-
-    def test_sandbox(self):
+    def test_builtin_implementation(self):
 
         class TestInterface(Interface):
-            def __iter__():
+            def __len__():
                 pass
 
         self.assertIsInstance([], TestInterface)
+        self.assertIsInstance('', TestInterface)
+        self.assertIsInstance(set, TestInterface)
+
+        self.assertNotIsInstance(iter([]), TestInterface)
+        self.assertNotIsInstance(1, TestInterface)
 
 
 if __name__ == '__main__':
