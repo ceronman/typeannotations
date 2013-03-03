@@ -52,18 +52,17 @@ class InterfaceMeta(type):
     def __new__(mcls, name, bases, namespace):
         cls = super().__new__(mcls, name, bases, namespace)
         # TODO: check base classes, prevent multiple inheritance.
-        signatures = {}
-        attributes = {}
+        cls.__signatures__ = {}
+        cls.__attributes__ = {}
         for name, value in namespace.items():
-            if isinstance(value, type):
-                attributes[name] = value
+            if name in ('__qualname__', '__module__', 'set_something'):
                 continue
-            try:
-                signatures[name] = inspect.signature(value)
-            except TypeError:
-                pass
-        cls.__signatures__ = signatures
-        cls.__attributes__ = attributes
+
+            if inspect.isfunction(value):
+                mcls.add_method(cls, value)
+                continue
+
+            mcls.add_attribute(cls, name, value)
         return cls
 
     def __instancecheck__(cls, instance):
@@ -73,7 +72,7 @@ class InterfaceMeta(type):
             except AttributeError:
                 return False
 
-            if not isinstance(attribute, type_):
+            if attribute is not None and not isinstance(attribute, type_):
                 return False
 
         for name, signature in cls.__signatures__.items():
@@ -123,6 +122,72 @@ class InterfaceMeta(type):
                 return False
         return True
 
+    def __subclasscheck__(cls, subclass):
+        # TODO: support attributes
+        for name, signature in cls.__signatures__.items():
+            try:
+                function = inspect.getattr_static(subclass, name)
+            except AttributeError:
+                return False
+            if isinstance(function, (staticmethod, classmethod)):
+                return False
+            try:
+                subclass_signature = inspect.signature(function)
+            except TypeError:
+                return False
+            except ValueError: # we probably got a builtin
+                return True
+
+            cls_params = list(signature.parameters.values())
+            subclass_params = list(subclass_signature.parameters.values())
+
+            subclass_params.pop(0) # remove 'self'
+
+            if len(cls_params) != len(subclass_params):
+                return False
+
+            for cls_param, instance_param in zip(cls_params, subclass_params):
+                if cls_param.name != instance_param.name:
+                    return False
+
+                cls_annotation = cls_param.annotation
+                instance_annotation = instance_param.annotation
+
+                if cls_annotation is EMPTY_ANNOTATION:
+                    cls_annotation = AnyType
+
+                if instance_annotation is EMPTY_ANNOTATION:
+                    instance_annotation = AnyType
+
+                if not issubclass(cls_annotation, instance_annotation):
+                    return False
+
+
+            cls_annotation = signature.return_annotation
+            instance_annotation = subclass_signature.return_annotation
+
+            if cls_annotation is EMPTY_ANNOTATION:
+                cls_annotation = AnyType
+
+            if instance_annotation is EMPTY_ANNOTATION:
+                instance_annotation = AnyType
+
+            if not issubclass(instance_annotation, cls_annotation):
+                return False
+        return True
+
+    def add_method(cls, method):
+        # TODO check that signatures contain only types as annotations.
+        try:
+            cls.__signatures__[method.__name__] = inspect.signature(method)
+        except (TypeError, AttributeError):
+            raise TypeError('Interface methods should have a signature')
+        return method
+
+    def add_attribute(cls, name, type_=AnyType):
+        if not isinstance(type_, type):
+            raise TypeError('Interface attributes should be type')
+        cls.__attributes__[name] = type_
 
 
 class Interface(metaclass=InterfaceMeta):

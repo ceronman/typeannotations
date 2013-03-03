@@ -383,44 +383,48 @@ class AnyTypeTest(unittest.TestCase):
 
 class InterfaceTest(unittest.TestCase):
 
-    def test_matching_arguments(self):
+    def test_matching_arguments_annotations(self):
 
         class TestInterface(Interface):
-            def test(a: int, b: str) -> int:
+            def test(a: int, b: str):
                 pass
 
 
         class TestImplementation:
-            def test(self, a: int, b: str ) -> int:
+            def test(self, a: int, b: str ):
                 return 1
 
+
         self.assertIsInstance(TestImplementation(), TestInterface)
+        self.assertTrue(issubclass(TestImplementation, TestInterface))
 
     def test_matching_arguments_without_annotation(self):
 
         class TestInterface(Interface):
-            def test(a, b) -> int:
+            def test(a, b):
                 pass
 
 
         class TestImplementation:
-            def test(self, a, b) -> int:
+            def test(self, a, b):
                 return 1
 
         self.assertIsInstance(TestImplementation(), TestInterface)
+        self.assertTrue(issubclass(TestImplementation, TestInterface))
 
     def test_matching_arguments_annotated_in_interface_only(self):
 
         class TestInterface(Interface):
-            def test(a: int, b: str) -> int:
+            def test(a: int, b: str):
                 pass
 
 
         class TestImplementation:
-            def test(self, a, b) -> int:
+            def test(self, a, b):
                 return 1
 
         self.assertIsInstance(TestImplementation(), TestInterface)
+        self.assertTrue(issubclass(TestImplementation, TestInterface))
 
     def test_matching_arguments_with_union_annotations(self):
 
@@ -434,45 +438,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertIsInstance(TestImplementation(), TestInterface)
-
-    def test_matching_arguments_union_annotations_different_order(self):
-
-        class TestInterface(Interface):
-            def test(a: union(float, int)) -> int:
-                pass
-
-
-        class TestImplementation:
-            def test(self, a: union(int, float)) -> int:
-                return 1
-
-        self.assertIsInstance(TestImplementation(), TestInterface)
-
-    def test_matching_arguments_superset(self):
-
-        class TestInterface(Interface):
-            def test(a: union(int, float)) -> int:
-                pass
-
-
-        class TestImplementation:
-            def test(self, a: union(int, float, bool)) -> int:
-                return 1
-
-        self.assertIsInstance(TestImplementation(), TestInterface)
-
-    def test_matching_arguments_superset_single_element(self):
-
-        class TestInterface(Interface):
-            def test(a: int) -> int:
-                pass
-
-
-        class TestImplementation:
-            def test(self, a: union(int, float)) -> int:
-                return 1
-
-        self.assertIsInstance(TestImplementation(), TestInterface)
+        self.assertTrue(issubclass(TestImplementation, TestInterface))
 
     def test_arguments_with_annotations_not_matching(self):
 
@@ -486,6 +452,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertNotIsInstance(TestImplementation(), TestInterface)
+        self.assertFalse(issubclass(TestImplementation, TestInterface))
 
     def test_arguments_in_different_order(self):
 
@@ -499,6 +466,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertNotIsInstance(TestImplementation(), TestInterface)
+        self.assertFalse(issubclass(TestImplementation, TestInterface))
 
     def test_arguments_with_different_name(self):
         class TestInterface(Interface):
@@ -511,6 +479,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertNotIsInstance(TestImplementation(), TestInterface)
+        self.assertFalse(issubclass(TestImplementation, TestInterface))
 
     def test_arguments_with_different_length(self):
 
@@ -524,6 +493,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertNotIsInstance(TestImplementation(), TestInterface)
+        self.assertFalse(issubclass(TestImplementation, TestInterface))
 
     def test_arguments_annotated_in_implementation_only(self):
 
@@ -531,38 +501,12 @@ class InterfaceTest(unittest.TestCase):
             def test(a, b) -> int:
                 pass
 
-
         class TestImplementation:
             def test(self, a: int, b: str) -> int:
                 return 1
 
         self.assertNotIsInstance(TestImplementation(), TestInterface)
-
-    def test_arguments_implement_subset(self):
-
-        class TestInterface(Interface):
-            def test(a: union(int, float, str)) -> int:
-                pass
-
-
-        class TestImplementation:
-            def test(self, a: union(int, float)) -> int:
-                return 1
-
-        self.assertNotIsInstance(TestImplementation(), TestInterface)
-
-    def test_arguments_implement_single_subset(self):
-
-        class TestInterface(Interface):
-            def test(a: union(int, float)) -> int:
-                pass
-
-
-        class TestImplementation:
-            def test(self, a: int) -> int:
-                return 1
-
-        self.assertNotIsInstance(TestImplementation(), TestInterface)
+        self.assertFalse(issubclass(TestImplementation, TestInterface))
 
     def test_matching_return(self):
         class TestInterface(Interface):
@@ -575,6 +519,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertIsInstance(TestImplementation(), TestInterface)
+        self.assertTrue(issubclass(TestImplementation, TestInterface))
 
     def test_matching_return_without_annotation(self):
         class TestInterface(Interface):
@@ -587,6 +532,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertIsInstance(TestImplementation(), TestInterface)
+        self.assertTrue(issubclass(TestImplementation, TestInterface))
 
     def test_matching_return_annotated_in_implementation_only(self):
         class TestInterface(Interface):
@@ -599,6 +545,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertIsInstance(TestImplementation(), TestInterface)
+        self.assertTrue(issubclass(TestImplementation, TestInterface))
 
     def test_matching_return_with_tuple_annotations(self):
         class TestInterface(Interface):
@@ -611,6 +558,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertIsInstance(TestImplementation(), TestInterface)
+        self.assertTrue(issubclass(TestImplementation, TestInterface))
 
     def test_matching_return_with_tuple_annotations_different_order(self):
         class TestInterface(Interface):
@@ -623,6 +571,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertIsInstance(TestImplementation(), TestInterface)
+        self.assertTrue(issubclass(TestImplementation, TestInterface))
 
     def test_matching_return_with_subset(self):
         class TestInterface(Interface):
@@ -635,6 +584,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertIsInstance(TestImplementation(), TestInterface)
+        self.assertTrue(issubclass(TestImplementation, TestInterface))
 
     def test_matching_return_with_single_subset(self):
         class TestInterface(Interface):
@@ -647,6 +597,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertIsInstance(TestImplementation(), TestInterface)
+        self.assertTrue(issubclass(TestImplementation, TestInterface))
 
     def test_return_with_annotation_not_matching(self):
 
@@ -660,6 +611,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertNotIsInstance(TestImplementation(), TestInterface)
+        self.assertFalse(issubclass(TestImplementation, TestInterface))
 
     def test_return_annotated_in_interface_only(self):
 
@@ -673,6 +625,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertNotIsInstance(TestImplementation(), TestInterface)
+        self.assertFalse(issubclass(TestImplementation, TestInterface))
 
     def test_return_superset(self):
 
@@ -686,6 +639,7 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertNotIsInstance(TestImplementation(), TestInterface)
+        self.assertFalse(issubclass(TestImplementation, TestInterface))
 
     def test_return_single_superset(self):
 
@@ -699,9 +653,9 @@ class InterfaceTest(unittest.TestCase):
                 return 1
 
         self.assertNotIsInstance(TestImplementation(), TestInterface)
+        self.assertFalse(issubclass(TestImplementation, TestInterface))
 
-    def test_attribute_with_annotated_attribute(self):
-
+    def test_matching_attribute(self):
         class TestInterface(Interface):
             x = int
 
@@ -714,20 +668,10 @@ class InterfaceTest(unittest.TestCase):
             def x(self):
                 return 1
 
-        class Other:
-            pass
-
-        class Another:
-            def __init__(self):
-                self.x = 'string'
-
-
         self.assertIsInstance(TestImplementation1(), TestInterface)
         self.assertIsInstance(TestImplementation2(), TestInterface)
-        self.assertNotIsInstance(Other(), TestInterface)
-        self.assertNotIsInstance(Another(), TestInterface)
 
-    def test_attribute_with_anytype(self):
+    def test_matching_attribute_with_anytype(self):
 
         class TestInterface(Interface):
             x = AnyType
@@ -740,14 +684,10 @@ class InterfaceTest(unittest.TestCase):
             def __init__(self):
                 self.x = 'string'
 
-        class Other:
-            pass
-
         self.assertIsInstance(TestImplementation1(), TestInterface)
         self.assertIsInstance(TestImplementation2(), TestInterface)
-        self.assertNotIsInstance(Other(), TestInterface)
 
-    def test_attribute_with_union(self):
+    def test_matching_attribute_with_union(self):
 
         class TestInterface(Interface):
             x = union(int, str)
@@ -760,11 +700,40 @@ class InterfaceTest(unittest.TestCase):
             def __init__(self):
                 self.x = 'string'
 
+        self.assertIsInstance(TestImplementation1(), TestInterface)
+        self.assertIsInstance(TestImplementation2(), TestInterface)
+
+    def test_attribute_with_different_type(self):
+
+        class TestInterface(Interface):
+            x = int
+
+        class Other:
+            def __init__(self):
+                self.x = 'string'
+
+
+        self.assertNotIsInstance(Other(), TestInterface)
+
+    def test_attribute_not_in_implementation(self):
+
+        class TestInterface(Interface):
+            x = AnyType
+            y = int
+
+        class Other:
+            y = int
+
+        self.assertNotIsInstance(Other(), TestInterface)
+
+    def test_attribute_with_type_not_in_union(self):
+
+        class TestInterface(Interface):
+            x = union(int, str)
+
         class Other:
             x = 1.5
 
-        self.assertIsInstance(TestImplementation1(), TestInterface)
-        self.assertIsInstance(TestImplementation2(), TestInterface)
         self.assertNotIsInstance(Other(), TestInterface)
 
     def test_multiple_attributes(self):
@@ -785,12 +754,8 @@ class InterfaceTest(unittest.TestCase):
             def y(self):
                 return 1
 
-        class Other:
-            pass
-
         self.assertIsInstance(TestImplementation1(), TestInterface)
         self.assertIsInstance(TestImplementation2(), TestInterface)
-        self.assertNotIsInstance(Other(), TestInterface)
 
     def test_multiple_matching_function(self):
 
@@ -835,19 +800,6 @@ class InterfaceTest(unittest.TestCase):
 
         self.assertIsInstance(TestImplementation(), TestInterface)
 
-    @unittest.skip
-    def test_self_referencing_interface(self):
-        class TestInterface(Interface):
-            def test(a: TestInterface) -> TestInterface:
-                pass
-
-
-        class TestImplementation:
-            def test(self, a: TestInterface) -> TestInterface:
-                return TestImplementation()
-
-        self.assertIsInstance(TestImplementation(), TestInterface)
-
     def test_builtin_implementation(self):
 
         class TestInterface(Interface):
@@ -861,6 +813,81 @@ class InterfaceTest(unittest.TestCase):
         self.assertNotIsInstance(iter([]), TestInterface)
         self.assertNotIsInstance(1, TestInterface)
 
+    def test_self_referencing_interface(self):
+        class TreeNode(Interface):
+            pass
+
+        TreeNode.add_attribute('left', TreeNode)
+        TreeNode.add_attribute('right', TreeNode)
+
+        class TreeNodeImplementation:
+            def __init__(self):
+                self.left = None
+                self.right = None
+
+        tree = TreeNodeImplementation()
+        tree.left = TreeNodeImplementation()
+        tree.right = TreeNodeImplementation()
+
+        self.assertIsInstance(tree, TreeNode)
+
+        tree.left = 1
+        self.assertNotIsInstance(tree, TreeNode)
+
+    def test_interface_add_method(self):
+
+        class Test(Interface):
+            pass
+
+        @Test.add_method
+        def test(x: int) -> int:
+            pass
+
+        class TestImplementation:
+            def test(self, x: int) -> int:
+                return 1
+
+        class Other: pass
+
+        self.assertIsInstance(TestImplementation(), Test)
+        self.assertNotIsInstance(Other(), Test)
+
+    def test_interface_add_method_with_no_method(self):
+
+        class Test(Interface):
+            pass
+
+        self.assertRaises(TypeError, Test.add_method, 1)
+
+    def test_interface_add_attribute(self):
+
+        class Test(Interface):
+            pass
+
+        Test.add_attribute('x', int)
+
+        class TestImplementation:
+            x = 1
+
+        class Other: pass
+
+        self.assertIsInstance(TestImplementation(), Test)
+        self.assertNotIsInstance(Other(), Test)
+
+    def test_interface_add_attribute_with_no_type(self):
+
+        class Test(Interface):
+            pass
+
+        self.assertRaises(TypeError, Test.add_attribute, 'name', 1)
+
+    def test_interface_with_no_type_attribute(self):
+
+        def test():
+            class Test(Interface):
+                x = 1
+
+        self.assertRaises(TypeError, test)
 
 if __name__ == '__main__':
     unittest.main()
