@@ -1,11 +1,25 @@
 import functools
 import inspect
 
-
 EMPTY_ANNOTATION = inspect.Signature.empty
 
 
 class UnionMeta(type):
+    """Metaclass for union types.
+
+    An object is an instance of a union type if it is instance of any of the
+    memebers of the union.
+
+    >>> NumberOrString = union(int, str)
+    >>> isinstance(1, NumberOrString)
+    True
+    >>> isinstance('string', NumberOrString)
+    True
+    >>> issubclass(int, NumberOrString)
+    True
+    >>> issubclass(str, NumberOrString)
+    True
+    """
     def __new__(mcls, name, bases, namespace):
         cls = super().__new__(mcls, name, bases, namespace)
         types = getattr(cls, '__types__', None)
@@ -17,9 +31,11 @@ class UnionMeta(type):
         return cls
 
     def __instancecheck__(cls, instance):
+        """Override for isinstance(instance, cls)."""
         return any(isinstance(instance, t) for t in cls.__types__)
 
     def __subclasscheck__(cls, subclass):
+        """Override for isinstance(instance, cls)."""
         if isinstance(subclass, UnionMeta):
             return all(issubclass(t, cls) for t in subclass.__types__)
         return any(issubclass(subclass, t) for t in cls.__types__)
@@ -28,26 +44,131 @@ class UnionMeta(type):
         return '<union {0}'.format(repr(cls.__types__))
 
 
+def union(*args):
+    """A convenience function for creating unions. See UnionMeta."""
+    return UnionMeta('union', (), {'__types__': set(args)})
+
+
 class AnyTypeMeta(type):
+    """Metaclass for AnyType.
+
+    Any object is instance of AnyType and any type is sublcass of anytype.
+
+    >>> isinstance(1, AnyType)
+    True
+    >>> isinstance(None, AnyType)
+    True
+    >>> isinstance('string', AnyType)
+    True
+    >>> issubclass(int, AnyType)
+    True
+    >>> issubclass(str, AnyType)
+    True
+    >>> issubclass(None, AnyType)
+    True
+    """
     def __new__(mcls, name, bases, namespace):
         return super().__new__(mcls, name, bases, namespace)
 
     def __instancecheck__(cls, instance):
+        """Override for isinstance(instance, cls)."""
         return True
 
     def __subclasscheck__(cls, subclass):
+        """Override for isinstance(instance, cls)."""
         return True
 
 
 class AnyType(metaclass=AnyTypeMeta):
-    pass
+    """See AnyTypeMeta."""
 
 
-def union(*args):
-    return UnionMeta('Union', (), {'__types__': set(args)})
+def _implements_signature(function, signature):
+    """True if the given function implements the given inspect.Signature."""
+    try:
+        instance_signature = inspect.signature(function)
+    except TypeError:
+        return False
+    except ValueError: # we got a builtin.
+        return True
+
+    cls_params = signature.parameters.values()
+    instance_params = instance_signature.parameters.values()
+    if len(cls_params) != len(instance_params):
+        return False
+
+    for cls_param, instance_param in zip(cls_params, instance_params):
+        if cls_param.name != instance_param.name:
+            return False
+
+        cls_annotation = cls_param.annotation
+        instance_annotation = instance_param.annotation
+
+        if cls_annotation is EMPTY_ANNOTATION:
+            cls_annotation = AnyType
+
+        if instance_annotation is EMPTY_ANNOTATION:
+            instance_annotation = AnyType
+
+        if not issubclass(cls_annotation, instance_annotation):
+            return False
+
+
+    cls_annotation = signature.return_annotation
+    instance_annotation = instance_signature.return_annotation
+
+    if cls_annotation is EMPTY_ANNOTATION:
+        cls_annotation = AnyType
+
+    if instance_annotation is EMPTY_ANNOTATION:
+        instance_annotation = AnyType
+
+    if not issubclass(instance_annotation, cls_annotation):
+        return False
+    return True
 
 
 class InterfaceMeta(type):
+    """Metaclass for an Interface.
+
+    And interface defines a set methods and attributes that an object must
+    implement. Any object implementing those will be considered an instance of
+    the interface.
+
+    >>> class IterableWithLen(Interface):
+    ...     def __iter__():
+    ...             pass
+    ...     def __len__():
+    ...             pass
+    ...
+    >>> isinstance([], IterableWithLen)
+    True
+    >>> isinstance({}, IterableWithLen)
+    True
+    >>> isinstance(1, IterableWithLen)
+    False
+    >>> isinstance(iter([]), IterableWithLen)
+    False
+    >>> issubclass(list, IterableWithLen)
+    True
+    >>> issubclass(int, IterableWithLen)
+    False
+    >>> class Person(Interface):
+    ...     name = str
+    ...     age = int
+    ...     def say_hello(name: str) -> str:
+    ...             pass
+    ...
+    >>> class Developer:
+    ...     def __init__(self, name, age):
+    ...             self.name = name
+    ...             self.age = age
+    ...     def say_hello(self, name: str) -> str:
+    ...             return 'hello ' + name
+    ...
+    >>> isinstance(Developer('dave', 20), Person)
+    True
+    """
 
     def __new__(mcls, name, bases, namespace):
         cls = super().__new__(mcls, name, bases, namespace)
@@ -55,9 +176,8 @@ class InterfaceMeta(type):
         cls.__signatures__ = {}
         cls.__attributes__ = {}
         for name, value in namespace.items():
-            if name in ('__qualname__', '__module__', 'set_something'):
+            if name in ('__qualname__', '__module__', '__doc__'):
                 continue
-
             if inspect.isfunction(value):
                 mcls.add_method(cls, value)
                 continue
@@ -66,63 +186,27 @@ class InterfaceMeta(type):
         return cls
 
     def __instancecheck__(cls, instance):
+        """Override for isinstance(instance, cls)."""
         for name, type_ in cls.__attributes__.items():
             try:
                 attribute = getattr(instance, name)
             except AttributeError:
                 return False
 
-            if attribute is not None and not isinstance(attribute, type_):
+            if not isinstance(attribute, type_):
                 return False
 
         for name, signature in cls.__signatures__.items():
-            try:
-                function = getattr(instance, name)
-            except AttributeError:
-                return False
-            try:
-                instance_signature = inspect.signature(function)
-            except TypeError:
-                return False
-            except ValueError: # we probably got a builtin
-                return True
-
-            cls_params = signature.parameters.values()
-            instance_params = instance_signature.parameters.values()
-            if len(cls_params) != len(instance_params):
-                return False
-
-            for cls_param, instance_param in zip(cls_params, instance_params):
-                if cls_param.name != instance_param.name:
-                    return False
-
-                cls_annotation = cls_param.annotation
-                instance_annotation = instance_param.annotation
-
-                if cls_annotation is EMPTY_ANNOTATION:
-                    cls_annotation = AnyType
-
-                if instance_annotation is EMPTY_ANNOTATION:
-                    instance_annotation = AnyType
-
-                if not issubclass(cls_annotation, instance_annotation):
-                    return False
-
-
-            cls_annotation = signature.return_annotation
-            instance_annotation = instance_signature.return_annotation
-
-            if cls_annotation is EMPTY_ANNOTATION:
-                cls_annotation = AnyType
-
-            if instance_annotation is EMPTY_ANNOTATION:
-                instance_annotation = AnyType
-
-            if not issubclass(instance_annotation, cls_annotation):
+            function = getattr(instance, name, None)
+            if not _implements_signature(function, signature):
                 return False
         return True
 
     def __subclasscheck__(cls, subclass):
+        """Override for isinstance(instance, cls)."""
+        if cls is subclass:
+            return True
+
         # TODO: support attributes
         for name, signature in cls.__signatures__.items():
             try:
@@ -177,6 +261,7 @@ class InterfaceMeta(type):
         return True
 
     def add_method(cls, method):
+        """Adds a new method to an Interface."""
         # TODO check that signatures contain only types as annotations.
         try:
             cls.__signatures__[method.__name__] = inspect.signature(method)
@@ -185,21 +270,114 @@ class InterfaceMeta(type):
         return method
 
     def add_attribute(cls, name, type_=AnyType):
+        """Adds a new attribute to the Interface."""
         if not isinstance(type_, type):
             raise TypeError('Interface attributes should be type')
         cls.__attributes__[name] = type_
 
 
 class Interface(metaclass=InterfaceMeta):
-    pass
+    """See InterfaceMeta."""
+
+
+class PredicateMeta(type):
+    """Metaclass for a predicate.
+
+    An object is an instance of a predicate if the predicate applied on the
+    object is true.
+
+    >>> Positive = predicate(lambda x: x > 0)
+    >>> isinstance(1, Positive)
+    True
+    >>> isinstance(0, Positive)
+    False
+    """
+    def __new__(mcls, name, bases, namespace):
+        return super().__new__(mcls, name, bases, namespace)
+
+    def __instancecheck__(cls, instance):
+        try:
+            return cls.__predicate__(instance)
+        except AttributeError:
+            return False
+
+    def __subclasscheck__(cls, subclass):
+        return False
+
+
+def predicate(function, name=None):
+    """Convenience function to create predicates. See PredicateMeta.
+
+    >>> Even = predicate(lambda x: x % 2 == 0)
+    >>> isinstance(2, Even)
+    True
+    >>> isinstance(1, Even)
+    False
+    """
+    name = name or function.__name__
+    return PredicateMeta(name, (), {'__predicate__': function})
+
+
+def optional(type_):
+    """Optional type predicate. An object can be None or the specified type.
+
+    >>> isinstance(1, optional(int))
+    True
+    >>> isinstance(None, optional(int))
+    True
+    """
+    return predicate(lambda x: (x is None or isinstance(x, type_)), 'optional')
+
+
+def typedef(function):
+    """A type represeting a given function signature.
+
+    It should be used as decorator:
+
+    >>> @typedef
+    ... def callback(a: int) -> int:
+    ...     pass
+    ...
+    >>> def handler(a: int) -> int:
+    ...     return a
+    ...
+    >>> isinstance(handler, callback)
+    True
+    >>> isinstance(lambda x: x, callback)
+    False
+    """
+    signature = inspect.signature(function)
+    return predicate(lambda x: _implements_signature(x, signature), 'typedef')
+
+
+def options(*args):
+    """A predicate type for a set of predefined values.
+
+    >>> Days = options('mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun')
+    >>> isinstance('mon', Days)
+    True
+    >>> isinstance('other', Days)
+    False
+    """
+    return predicate(lambda x: x in args, 'options')
+
+
+def only(type_):
+    """A predicate requiring exact type, not superclasses.
+
+    >>> isinstance(True, only(bool))
+    True
+    >>> isinstance(1, only(bool))
+    False
+    """
+    return predicate(lambda x: type(x) is type_, 'only')
 
 
 def _check_argument_types(signature, *args, **kwargs):
+    """Check that the arguments of a function match the given signature."""
     bound_arguments = signature.bind(*args, **kwargs)
     parameters = signature.parameters
     for name, value in bound_arguments.arguments.items():
-        if value is None:
-            continue
         annotation = parameters[name].annotation
         if annotation is EMPTY_ANNOTATION:
             annotation = AnyType
@@ -208,8 +386,7 @@ def _check_argument_types(signature, *args, **kwargs):
 
 
 def _check_return_type(signature, return_value):
-    if return_value is None:
-        return
+    """Check that the return value of a function matches the signature."""
     annotation = signature.return_annotation
     if annotation is EMPTY_ANNOTATION:
         annotation = AnyType
@@ -219,6 +396,19 @@ def _check_return_type(signature, return_value):
 
 
 def typechecked(target):
+    """A decorator to make a function check its types at runtime.
+
+    >>> @typechecked
+    ... def test(a: int):
+    ...     return a
+    ...
+    >>> test(1)
+    1
+    >>> test('string')
+    Traceback (most recent call last):
+        ...
+    TypeError: Incorrect type for "a"
+    """
     signature = inspect.signature(target)
 
     @functools.wraps(target)
@@ -226,3 +416,7 @@ def typechecked(target):
         _check_argument_types(signature, *args, **kwargs)
         return _check_return_type(signature, target(*args, **kwargs))
     return wrapper
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()

@@ -1,5 +1,7 @@
 import unittest
-from annotations import typechecked, Interface, union, AnyType
+
+from annotations import (typechecked, Interface, union, AnyType, predicate,
+    optional, typedef, options, only)
 
 
 class TypecheckedTest(unittest.TestCase):
@@ -52,6 +54,62 @@ class TypecheckedTest(unittest.TestCase):
         self.assertEqual(Decimal('2.5'), test(Decimal('2.5')))
         self.assertRaises(TypeError, test, 'string')
 
+    def test_single_argument_with_predicate_annotation(self):
+
+        @typechecked
+        def test(a: predicate(lambda x: x > 0)):
+            return a
+
+        self.assertEqual(1, test(1))
+        self.assertRaises(TypeError, test, 0)
+
+    def test_single_argument_with_optional_annotation(self):
+
+        @typechecked
+        def test(a: optional(int)):
+            return a
+
+        self.assertEqual(1, test(1))
+        self.assertEqual(None, test(None))
+
+    def test_single_argument_with_typedef_annotation(self):
+
+        @typedef
+        def callback(a: int, b: str) -> dict:
+            pass
+
+        @typechecked
+        def test(a: callback):
+            return a(1, 'string')
+
+        def f1(a: int, b: str) -> dict:
+            return {}
+
+        def f2(a: str, b: str):
+            pass
+
+        self.assertEqual({}, test(f1))
+        self.assertRaises(TypeError, test, f2)
+
+    def test_single_argument_with_options_annotation(self):
+
+        @typechecked
+        def test(a: options('open', 'write')):
+            return a
+
+        self.assertEqual('open', test('open'))
+        self.assertEqual('write', test('write'))
+        self.assertRaises(TypeError, test, 'other')
+
+    def test_single_argument_with_only_annotation(self):
+
+        @typechecked
+        def test(a: only(int)):
+            return a
+
+        self.assertEqual(1, test(1))
+        self.assertRaises(TypeError, test, True)
+
     def test_single_argument_with_interface(self):
 
         class Test(Interface):
@@ -98,7 +156,7 @@ class TypecheckedTest(unittest.TestCase):
         def test(a: int):
             return a
 
-        self.assertEqual(None, test(None))
+        self.assertRaises(TypeError, test, None)
 
     def test_multiple_arguments_some_with_annotations(self):
 
@@ -192,7 +250,7 @@ class TypecheckedTest(unittest.TestCase):
         def test(a) -> int:
             return a
 
-        self.assertEqual(None, test(None))
+        self.assertRaises(TypeError, test, None)
 
 
 class UnionTest(unittest.TestCase):
@@ -369,6 +427,7 @@ class AnyTypeTest(unittest.TestCase):
         self.assertIsInstance(1, AnyType)
         self.assertIsInstance('string', AnyType)
         self.assertIsInstance(Test(), AnyType)
+        self.assertIsInstance(None, AnyType)
 
     def test_issubclass(self):
 
@@ -439,6 +498,23 @@ class InterfaceTest(unittest.TestCase):
 
         self.assertIsInstance(TestImplementation(), TestInterface)
         self.assertTrue(issubclass(TestImplementation, TestInterface))
+
+    def test_matching_arguments_with_interface(self):
+
+        class TestInterface1(Interface):
+            def test1(x, y):
+                pass
+
+        class TestInterface2(Interface):
+            def test2(a: TestInterface1):
+                pass
+
+        class TestImplementation:
+            def test2(self, a: TestInterface1):
+                return 1
+
+        self.assertIsInstance(TestImplementation(), TestInterface2)
+        self.assertTrue(issubclass(TestImplementation, TestInterface2))
 
     def test_arguments_with_annotations_not_matching(self):
 
@@ -817,8 +893,8 @@ class InterfaceTest(unittest.TestCase):
         class TreeNode(Interface):
             pass
 
-        TreeNode.add_attribute('left', TreeNode)
-        TreeNode.add_attribute('right', TreeNode)
+        TreeNode.add_attribute('left', optional(TreeNode))
+        TreeNode.add_attribute('right', optional(TreeNode))
 
         class TreeNodeImplementation:
             def __init__(self):
@@ -888,6 +964,54 @@ class InterfaceTest(unittest.TestCase):
                 x = 1
 
         self.assertRaises(TypeError, test)
+
+
+class PredicateTest(unittest.TestCase):
+
+    def test_predicate(self):
+        self.assertIsInstance(1, predicate(lambda x: x > 0))
+        self.assertNotIsInstance(0, predicate(lambda x: x > 0))
+        self.assertNotIsInstance(-1, predicate(lambda x: x > 0))
+
+    def test_predicate_called(self):
+        called = False
+
+        @predicate
+        def positive(x):
+            nonlocal called
+            called = True
+            return x > 0
+
+        self.assertIsInstance(1, positive)
+        self.assertTrue(called)
+
+    def test_optional(self):
+        self.assertIsInstance(1, optional(int))
+        self.assertIsInstance(None, optional(int))
+        self.assertNotIsInstance('string', optional(int))
+
+    def test_typedef(self):
+        @typedef
+        def callback(a: int) -> int:
+            pass
+
+        def f1(a: int) -> int:
+            return a
+
+        def f2():
+            pass
+
+        self.assertIsInstance(f1, callback)
+        self.assertNotIsInstance(f2, callback)
+
+    def test_options(self):
+        self.assertIsInstance('open', options('open', 'write'))
+        self.assertIsInstance('write', options('open', 'write'))
+        self.assertNotIsInstance('other', options('open', 'write'))
+
+    def test_only(self):
+        self.assertIsInstance(1, only(int))
+        self.assertNotIsInstance(True, only(int))
 
 if __name__ == '__main__':
     unittest.main()
