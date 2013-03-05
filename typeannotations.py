@@ -1,3 +1,13 @@
+"""Tools for adding type annotations in Python.
+
+This module provides a set of tools for type checking and annotations:
+
+- typechecked() provides a decorator for cheking the types in annotations.
+- Interface provides a subclass to define structural interfaces.
+- union() provides a group of types.
+- predicate() provides type that checks some precondition.
+
+"""
 import functools
 import inspect
 
@@ -8,7 +18,7 @@ class UnionMeta(type):
     """Metaclass for union types.
 
     An object is an instance of a union type if it is instance of any of the
-    memebers of the union.
+    members of the union.
 
     >>> NumberOrString = union(int, str)
     >>> isinstance(1, NumberOrString)
@@ -330,7 +340,7 @@ def optional(type_):
 
 
 def typedef(function):
-    """A type represeting a given function signature.
+    """A type representing a given function signature.
 
     It should be used as decorator:
 
@@ -363,7 +373,7 @@ def options(*args):
 
 
 def only(type_):
-    """A predicate requiring exact type, not superclasses.
+    """A predicate requiring exact type, not super classes.
 
     >>> isinstance(True, only(bool))
     True
