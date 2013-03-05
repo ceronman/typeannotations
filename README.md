@@ -5,13 +5,13 @@ https://github.com/ceronman/typeannotations
 ## About
 
 The `typeannotations` module provides a set of tools for type checking and type
-inference on Python. It also a provides a set of types useful for annotating
-functions and objects.
+inference of Python code. It also a provides a set of types useful for
+annotating functions and objects.
 
 This tools are mainly designed to be used by static analyzers such as linters,
-code completion libraries and IDEs. However, decorators for making run-time
-checks are provided too. Run-time type checking is not always a good idea in
-Python, however, in some cases can be very useful.
+code completion libraries and IDEs. Additionally, decorators for making
+run-time checks are provided too. Run-time type checking is not always a good
+idea in Python, however, in some cases can be very useful.
 
 ## Run-time type checking.
 
@@ -84,8 +84,7 @@ False
 ### Typedefs
 
 A `typedef` is similar to an `Interface` except that it defines a single
-function signature. a type of functions implementing a specific signature. This
-is useful for defining callbacks. For example:
+function signature. This is useful for defining callbacks. For example:
 
 ```python
 >>> @typedef
@@ -239,7 +238,10 @@ This is useful when defining a function:
 
 ```python
 typedict({str: int})
-typeseq([int]), typeseq(set(int)), typeseq((int,))
+typeseq([int])
+typeseq(set(int))
+typeseq((int,))
+...
 ```
 
 ### Function overloading
