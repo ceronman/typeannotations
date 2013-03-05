@@ -6,8 +6,8 @@ This module provides a set of tools for type checking and annotations:
 - Interface provides a subclass to define structural interfaces.
 - union() provides a group of types.
 - predicate() provides type that checks some precondition.
-
 """
+
 import functools
 import inspect
 
