@@ -1,7 +1,8 @@
 import unittest
 
-from annotations import (typechecked, Interface, union, AnyType, predicate,
+from typeannotations import (typechecked, Interface, union, AnyType, predicate,
     optional, typedef, options, only)
+
 
 
 class TypecheckedTest(unittest.TestCase):
