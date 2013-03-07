@@ -111,6 +111,7 @@ class AnyTypeMeta(type):
 
 class AnyType(metaclass=AnyTypeMeta):
     """See AnyTypeMeta."""
+    pass
 
 
 def _implements_signature(function, signature):
@@ -309,6 +310,7 @@ class InterfaceMeta(type):
 
 class Interface(metaclass=InterfaceMeta):
     """See InterfaceMeta."""
+    pass
 
 
 class PredicateMeta(type):
