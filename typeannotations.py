@@ -18,10 +18,10 @@
 
 This module provides a set of tools for type checking and annotations:
 
-- typechecked() provides a decorator for cheking the types in annotations.
+- typechecked() provides a decorator for checking the types in annotations.
 - Interface provides a subclass to define structural interfaces.
 - union() provides a group of types.
-- predicate() provides type that checks some precondition.
+- predicate() provides type that checks a precondition.
 """
 
 __author__ = ('Manuel Cerón <ceronman@gmail.com>')
@@ -71,7 +71,7 @@ class UnionMeta(type):
         return any(issubclass(subclass, t) for t in cls.__types__)
 
     def __repr__(cls):
-        return '<union {0}'.format(repr(cls.__types__))
+        return '<union {0}>'.format(repr(cls.__types__))
 
 
 def union(*args):
@@ -161,7 +161,7 @@ def _implements_signature(function, signature):
 class InterfaceMeta(type):
     """Metaclass for an Interface.
 
-    And interface defines a set methods and attributes that an object must
+    An interface defines a set methods and attributes that an object must
     implement. Any object implementing those will be considered an instance of
     the interface.
 
@@ -300,8 +300,9 @@ class InterfaceMeta(type):
         return method
 
     def add_attribute(cls, name, type_=AnyType):
-        """Adds a new attribute to the Interface."""
+        """Adds a new attribute to an Interface."""
         if not isinstance(type_, type):
+            # TODO the error message below is incomplete.
             raise TypeError('Interface attributes should be type')
         cls.__attributes__[name] = type_
 
@@ -313,8 +314,8 @@ class Interface(metaclass=InterfaceMeta):
 class PredicateMeta(type):
     """Metaclass for a predicate.
 
-    An object is an instance of a predicate if the predicate applied on the
-    object is true.
+    An object is an instance of a predicate if applying the predicate to the
+    object returns True.
 
     >>> Positive = predicate(lambda x: x > 0)
     >>> isinstance(1, Positive)
@@ -393,7 +394,7 @@ def options(*args):
 
 
 def only(type_):
-    """A predicate requiring exact type, not super classes.
+    """A predicate requiring an exact type, not super classes.
 
     >>> isinstance(True, only(bool))
     True
@@ -447,6 +448,6 @@ def typechecked(target):
         return _check_return_type(signature, target(*args, **kwargs))
     return wrapper
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     import doctest
     doctest.testmod()
