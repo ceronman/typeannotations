@@ -10,8 +10,8 @@ annotating functions and objects.
 
 This tools are mainly designed to be used by static analyzers such as linters,
 code completion libraries and IDEs. Additionally, decorators for making
-run-time checks are provided too. Run-time type checking is not always a good
-idea in Python, however, in some cases can be very useful.
+run-time checks are provided. Run-time type checking is not always a good
+idea in Python, but in some cases it can be very useful.
 
 ## Run-time type checking.
 
@@ -110,8 +110,8 @@ Note that `MouseEvent` is a subclass of `Event`.
 
 ## Type unions
 
-A `union` is a collection of types and it's a type it self. An object is an
-instance of an `union` if it's an instance of any of the elements in the union.
+A `union` is a collection of types and it's a type itself. An object is an
+instance of a `union` if it's an instance of any of the elements in the union.
 For example:
 
 ```python
