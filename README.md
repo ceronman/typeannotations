@@ -8,7 +8,7 @@ The `typeannotations` module provides a set of tools for type checking and type
 inference of Python code. It also a provides a set of types useful for
 annotating functions and objects.
 
-This tools are mainly designed to be used by static analyzers such as linters,
+These tools are mainly designed to be used by static analyzers such as linters,
 code completion libraries and IDEs. Additionally, decorators for making
 run-time checks are provided too. Run-time type checking is not always a good
 idea in Python, however, in some cases can be very useful.
