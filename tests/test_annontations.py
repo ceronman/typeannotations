@@ -1,6 +1,6 @@
 import unittest
 
-from typeannotations import (typechecked, Interface, union, AnyType, predicate,
+from annotation.typed import (typechecked, Interface, union, AnyType, predicate,
     optional, typedef, options, only)
 
 
