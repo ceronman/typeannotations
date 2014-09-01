@@ -250,19 +250,40 @@ This is useful when defining a function:
    ...		...
 
 
+Complex Types:
+''''''''''''''
+
+Complex types are also accepted in both interfaces and type specifications.
+
+.. code-block:: pycon
+
+   >>> @typechecked
+   ... def test(a: { int: ( str, bool ) }) -> (bool, int):
+   ...     return isinstance(a, dict), len(a)
+   ...
+   >>> test({ 1: ('a', False) })
+   (True, 1)
+   >>> test('string')
+   Traceback (most recent call last):
+      ...
+   TypeError: Incorrect type for "a"
+
+The rules are:
+
+1. A list of types.  The value must be a list containing only the specified
+   types.
+2. A set of types.  The value must be a set containing only the specified types.
+3. A tuple of types.  The value must be a tuple containing the specified types in the specified
+   order.
+4. A dict of types.  The value must be a dict where each (key, value) pair is
+   assocated with a (key, value) pair in the type dictionary.
+
+Any of the complex types can nest and contain any other type.
+
+
+
 To be implemented:
 ------------------
-
-Collections definitions:
-''''''''''''''''''''''''
-
-.. code-block:: python
-
-   typedict({str: int})
-   typeseq([int])
-   typeseq(set(int))
-   typeseq((int,))
-   ...
 
 Function overloading
 ''''''''''''''''''''
