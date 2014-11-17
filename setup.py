@@ -14,7 +14,7 @@ def readme():
 
 setup(
     name='typeannotations',
-    version='1.0.0',
+    version='0.1.0',
     description='A library with a set of tools for annotating types '
                 'in Python code.',
     long_description=readme(),
