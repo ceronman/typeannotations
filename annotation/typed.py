@@ -113,6 +113,29 @@ class AnyType(metaclass=AnyTypeMeta):
     """See AnyTypeMeta."""
     pass
 
+def _multi_instanceof(a, b, t):
+    return isinstance(a, t) and isinstance(b, t)
+
+def _check_signature_constraint(instance, constraint):
+    if isinstance(constraint, type):
+        return issubclass(instance, constraint)
+    elif _multi_instanceof(instance, constraint, list) or _multi_instanceof(instance, constraint, set):
+        ret = True
+        for sub_type in instance:
+            ret &= any(_check_signature_constraint(sub_type, con) for con in constraint)
+        return ret
+    elif _multi_instanceof(instance, constraint, tuple) and len(constraint) == len(instance):
+        return all(_check_signature_constraint(sub, con) for sub, con in zip(instance, constraint))
+    elif _multi_instanceof(instance, constraint, dict):
+        ret = True
+        for sub_key, sub_val in instance.items():
+            ret &= any(
+                    (_check_signature_constraint(sub_key, key_constraint) and
+                    _check_signature_constraint(sub_val, value_constraint))
+                    for key_constraint, value_constraint in constraint.items())
+        return ret
+    else:
+        return False
 
 def _implements_signature(function, signature):
     """True if the given function implements the given inspect.Signature."""
@@ -141,7 +164,7 @@ def _implements_signature(function, signature):
         if instance_annotation is EMPTY_ANNOTATION:
             instance_annotation = AnyType
 
-        if not issubclass(cls_annotation, instance_annotation):
+        if not _check_signature_constraint(cls_annotation, instance_annotation):
             return False
 
 
@@ -154,7 +177,7 @@ def _implements_signature(function, signature):
     if instance_annotation is EMPTY_ANNOTATION:
         instance_annotation = AnyType
 
-    if not issubclass(instance_annotation, cls_annotation):
+    if not _check_signature_constraint(instance_annotation, cls_annotation):
         return False
     return True
 
@@ -405,6 +428,32 @@ def only(type_):
     """
     return predicate(lambda x: type(x) is type_, 'only')
 
+def _check_type_constraint(value, constraint):
+    if isinstance(constraint, type):
+        return isinstance(value, constraint)
+    elif _multi_instanceof(value, constraint, list) or _multi_instanceof(value, constraint, set):
+        if len(constraint):
+            ret = True
+            for sub_val in value:
+                ret &= any(_check_type_constraint(sub_val, con) for con in constraint)
+            return ret
+        else:
+            return True
+    elif _multi_instanceof(value, constraint, tuple) and len(constraint) == len(value):
+        return all(_check_type_constraint(sub, con) for sub, con in zip(value, constraint))
+    elif _multi_instanceof(value, constraint, dict):
+        if len(constraint):
+            ret = True
+            for sub_key, sub_val in value.items():
+                ret &= any(
+                    (_check_type_constraint(sub_key, key_constraint) and
+                    _check_type_constraint(sub_val, value_constraint))
+                    for key_constraint, value_constraint in constraint.items())
+            return ret
+        else:
+            return True
+    else:
+        return False
 
 def _check_argument_types(signature, *args, **kwargs):
     """Check that the arguments of a function match the given signature."""
@@ -414,7 +463,7 @@ def _check_argument_types(signature, *args, **kwargs):
         annotation = parameters[name].annotation
         if annotation is EMPTY_ANNOTATION:
             annotation = AnyType
-        if not isinstance(value, annotation):
+        if not _check_type_constraint(value, annotation):
             raise TypeError('Incorrect type for "{0}"'.format(name))
 
 
@@ -423,7 +472,7 @@ def _check_return_type(signature, return_value):
     annotation = signature.return_annotation
     if annotation is EMPTY_ANNOTATION:
         annotation = AnyType
-    if not isinstance(return_value, annotation):
+    if not _check_type_constraint(return_value, annotation):
         raise TypeError('Incorrect return type')
     return return_value
 

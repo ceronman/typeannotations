@@ -1,4 +1,5 @@
 import unittest
+from collections import namedtuple
 
 from annotation.typed import (typechecked, Interface, union, AnyType, predicate,
     optional, typedef, options, only)
@@ -253,6 +254,86 @@ class TypecheckedTest(unittest.TestCase):
 
         self.assertRaises(TypeError, test, None)
 
+    def test_complex_types(self):
+        simple_types = [ 'a', 1, None, 1.1, False ]
+        check = namedtuple('check', ('test', 'good', 'bad'))
+
+        checks = [
+            check(
+                [ str ],
+                [ [ 'a' ], [ 'b', 'c' ], [ ], ],
+                [ [ 1 ], [ 'a', 1 ] ]
+            ),
+            check(
+                [ str, int ],
+                [ [ 'a', 1 ], [ 'b', 'c', 1 ], [ 1 ], [ ], ],
+                [ [ None ], [ 1, 'a', 1.1 ], [ 1, 1.1 ] ]
+            ),
+            check(
+                [ ],
+                [ [ 'a' ], [ 'b', 'c' ], [ ], ],
+                [ ]
+            ),
+            check(
+                ( str, int ),
+                [ ( 'a', 1 ) ],
+                [ ( 'a', 1, 2 ), tuple() ]
+            ),
+            check(
+                { str: int },
+                [ { 'a': 1 }, { 'a': 1, 'b': 2 }, { }, ],
+                [ { 'a': None }, { 'a': 1, 1: 2 }, ]
+            ),
+            check(
+                { str: int, int: int },
+                [ { 'a': 1 }, { 'a': 1, 'b': 2 }, { 1: 1 }, { 'a': 1, 2: 2 }, { } ],
+                [ { 'a': None }, { 1: 'a' }, { 'a': 1, 1: 'a' }, ]
+            ),
+            check(
+                { },
+                [ { 'a': 1 }, { 'a': 1, 'b': 2 }, { }, ],
+                [ ]
+            ),
+            check(
+                { str },
+                [ { 'a', 'b' }, { 'a' }, set() ],
+                [ { 1 }, { 'a', False } ]
+            ),
+            check(
+                { str, int },
+                [ { 1 }, { 'a', 'b', 1 }, { 'a', 1 }, set() ],
+                [ { 'a', 1.1 }, { 1, None } ]
+            ),
+            check(
+                set(),
+                [ { 'a', 'b' }, { 'a' }, set() ],
+                [ ]
+            ),
+        ]
+
+        for check in checks:
+            print("Checking %s" % (check.test, ))
+
+            for value in check.good:
+                print("\tShould accept %s" % (value, ))
+
+                @typechecked
+                def test(a: check.test) -> check.test:
+                    return value
+                self.assertEqual(value, test(value))
+
+            for value in check.bad + simple_types:
+                print("\tShould reject %s" % (value, ))
+
+                @typechecked
+                def test(a: check.test):
+                    pass
+                self.assertRaises(TypeError, test, value)
+
+                @typechecked
+                def test(a) -> check.test:
+                    return value
+                self.assertRaises(TypeError, test, value)
 
 class UnionTest(unittest.TestCase):
 
@@ -885,7 +966,7 @@ class InterfaceTest(unittest.TestCase):
 
         self.assertIsInstance([], TestInterface)
         self.assertIsInstance('', TestInterface)
-        self.assertIsInstance(set, TestInterface)
+        self.assertIsInstance(set(), TestInterface)
 
         self.assertNotIsInstance(iter([]), TestInterface)
         self.assertNotIsInstance(1, TestInterface)
@@ -965,6 +1046,94 @@ class InterfaceTest(unittest.TestCase):
                 x = 1
 
         self.assertRaises(TypeError, test)
+
+    def test_interface_complex_list_type(self):
+
+        class TestInterface(Interface):
+            def test1(a: [ int ]) -> [ int, str ]:
+                pass
+
+        class TestImplementation:
+            def test1(self, a: [ int ]) -> [ int, str ]:
+                return 1
+
+        self.assertIsInstance(TestImplementation(), TestInterface)
+
+        class TestInterface(Interface):
+            def test1(a: [ ]) -> [ ]:
+                pass
+
+        class TestImplementation:
+            def test1(self, a: [ ]) -> [ ]:
+                return 1
+
+        self.assertIsInstance(TestImplementation(), TestInterface)
+
+    def test_interface_complex_set_type(self):
+
+        class TestInterface(Interface):
+            def test1(a: { int }) -> { int, str }:
+                pass
+
+        class TestImplementation:
+            def test1(self, a: { int }) -> { int, str }:
+                return 1
+
+        self.assertIsInstance(TestImplementation(), TestInterface)
+
+        class TestInterface(Interface):
+            def test1(a: set()) -> set():
+                pass
+
+        class TestImplementation:
+            def test1(self, a: set()) -> set():
+                return 1
+
+        self.assertIsInstance(TestImplementation(), TestInterface)
+
+    def test_interface_complex_tuple_type(self):
+
+        class TestInterface(Interface):
+            def test1(a: ( str, int )) -> (str, ):
+                pass
+
+        class TestImplementation:
+            def test1(self, a: ( str, int )) -> (str, ):
+                return 1
+
+        self.assertIsInstance(TestImplementation(), TestInterface)
+
+        class TestInterface(Interface):
+            def test1(a: tuple()) -> tuple():
+                pass
+
+        class TestImplementation:
+            def test1(self, a: tuple()) -> tuple():
+                return 1
+
+        self.assertIsInstance(TestImplementation(), TestInterface)
+
+    def test_interface_complex_dict_type(self):
+
+        class TestInterface(Interface):
+            def test1(a: { int: str, str: int }) -> { }:
+                pass
+
+        class TestImplementation:
+            def test1(self, a: { int: str, str: int }) -> { }:
+                return 1
+
+        self.assertIsInstance(TestImplementation(), TestInterface)
+
+        class TestInterface(Interface):
+            def test1(a: {}) -> {}:
+                pass
+
+        class TestImplementation:
+            def test1(self, a: {}) -> {}:
+                return 1
+
+        self.assertIsInstance(TestImplementation(), TestInterface)
 
 
 class PredicateTest(unittest.TestCase):
